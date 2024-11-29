@@ -9,17 +9,17 @@ const cron = require('node-cron');
 const router = express.Router();
 require('dotenv').config();
 
-// Mailgun Transporter Configuration
+
 const transporter = nodemailer.createTransport({
   host: 'smtp.mailgun.org',
   port: 587,
   auth: {
-    user: process.env.MAILGUN_USER,  // Correctly using MAILGUN_USER (SMTP username)
-    pass: process.env.MAILGUN_PASS,  // Correctly using MAILGUN_PASS (SMTP password)
+    user: process.env.MAILGUN_USER,  
+    pass: process.env.MAILGUN_PASS,  
   }
 });
 
-// Function to send task-related emails
+
 const sendTaskEmail = async (action, taskDetails) => {
   const mailOptions = {
     from: process.env.EMAIL_FROM,
@@ -47,25 +47,24 @@ const sendTaskEmail = async (action, taskDetails) => {
   }
 };
 
-// Function to schedule task reminders
+
 const scheduleTaskReminders = (taskDetails) => {
   const dueDate = moment(taskDetails.dueDate);
   const now = moment();
 
-  // Calculate reminder times
+  
   const oneHourBefore = dueDate.clone().subtract(1, 'hours');
   const twentyFourHoursBefore = dueDate.clone().subtract(24, 'hours');
 
-  // Function to format the time into a cron expression
   const toCronExpression = (time) => {
-    // Only schedule if the reminder time is in the future
+    
     if (time.isAfter(now)) {
       return `${time.minutes()} ${time.hours()} ${time.date()} ${time.month() + 1} *`;
     }
     return null;
   };
 
-  // Schedule reminders
+
   const oneHourCron = toCronExpression(oneHourBefore);
   const twentyFourHourCron = toCronExpression(twentyFourHoursBefore);
 
@@ -92,7 +91,6 @@ const scheduleTaskReminders = (taskDetails) => {
   }
 };
 
-// Existing file upload configuration
 const uploadsDir = './uploads';
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
@@ -109,7 +107,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// Create task route
+
 router.post('/', upload.single('file'), async (req, res) => {
   const { task, priority, dueDate, notes, reminderEmail } = req.body;
   const file = req.file ? req.file.path : null;
@@ -126,11 +124,11 @@ router.post('/', upload.single('file'), async (req, res) => {
   try {
     const savedTask = await newTask.save();
 
-    // Use setImmediate to handle email sending and scheduling reminders asynchronously
+    
     setImmediate(async () => {
       try {
-        await sendTaskEmail('added', savedTask); // Send task added notification email
-        scheduleTaskReminders(savedTask); // Schedule reminders 1 hour and 24 hours before the due date
+        await sendTaskEmail('added', savedTask);
+        scheduleTaskReminders(savedTask);
       } catch (error) {
         console.error('Error processing task notifications and reminders:', error);
       }
@@ -143,7 +141,7 @@ router.post('/', upload.single('file'), async (req, res) => {
   }
 });
 
-// Update task route
+
 router.put('/:id', upload.single('file'), async (req, res) => {
   const { id } = req.params;
   const { task, priority, dueDate, notes, reminderEmail } = req.body;
@@ -165,7 +163,7 @@ router.put('/:id', upload.single('file'), async (req, res) => {
       { new: true }
     );
 
-    // Schedule new reminders for the updated task if due date changed
+    
     if (dueDate) {
       setImmediate(async () => {
         try {
@@ -183,7 +181,7 @@ router.put('/:id', upload.single('file'), async (req, res) => {
   }
 });
 
-// Get all tasks route
+
 router.get('/', async (req, res) => {
   try {
     const tasks = await Task.find();
@@ -193,7 +191,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get tasks by date route
+
 router.get('/:date', async (req, res) => {
   const { date } = req.params;
   try {
@@ -204,17 +202,17 @@ router.get('/:date', async (req, res) => {
   }
 });
 
-// Delete task route
+
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
   try {
     const deletedTask = await Task.findById(id);
     await Task.findByIdAndDelete(id);
 
-    // Use setImmediate to handle email sending asynchronously
+   
     setImmediate(async () => {
       try {
-        await sendTaskEmail('deleted', deletedTask); // Send task deleted notification email
+        await sendTaskEmail('deleted', deletedTask); 
       } catch (error) {
         console.error('Error processing task deletion notification:', error);
       }
